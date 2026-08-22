@@ -1,0 +1,9 @@
+player_type=0
+collectible_count=1
+has_D6=true
+active_item=105
+difficulty=0
+achievement_unlocks_disallowed=api_missing
+challenge=0
+eternal_hearts=0
+golden_bombs=false

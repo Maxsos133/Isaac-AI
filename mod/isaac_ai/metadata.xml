@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata>
+    <name>Isaac AI Bridge</name>
+    <directory>isaac_ai</directory>
+    <id>isaac_ai_bridge</id>
+    <description>Synchronous RL bridge: socket-stepped observations and mod-driven input.</description>
+    <version>1.0</version>
+    <visibility>Hidden</visibility>
+</metadata>

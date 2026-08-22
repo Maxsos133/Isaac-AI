@@ -1,0 +1,45 @@
+# --- Python -----------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# 4.7 GB, and reproducible from the dependency list in the README.
+.venv/
+
+# --- Machine-specific configuration -----------------------------------------
+# config.toml carries absolute paths to this machine's Steam library and save
+# directory, which includes the Windows username. Copy config.example.toml to
+# config.toml and point the three [game] paths at your own install.
+config.toml
+
+# --- Training artefacts -----------------------------------------------------
+# Checkpoints are large and regenerable: 29 policies plus the pixel students,
+# which run to 135 MB each. metrics.jsonl is deliberately NOT ignored — it is
+# only ~7 MB across every run and it is the evidence behind every number in the
+# README, so a claim can be checked rather than taken on trust.
+# `**` because captured frames sit a level deeper, in runs/<name>/frames/ —
+# a runs/*/*.png pattern silently misses every one of them.
+runs/**/*.pt
+runs/**/*.png
+
+# --- Phase 0 scratch --------------------------------------------------------
+# Screenshots taken while working out multi-instance launching, focus and
+# capture. FINDINGS.md is the writeup and references none of them, so the
+# conclusions survive without 5.8 MB of desktop captures.
+spike/*.png
+spike/capture-probe/
+
+# --- Local game state -------------------------------------------------------
+# Personal save backups taken before the frozen snapshot was cut. saves/ IS
+# tracked: it is 76 KB and the pristine snapshot is required to reproduce a run.
+backups/
+
+# The game truncates this per launch and every instance shares it, so it is
+# never reliable to diff anyway.
+log.txt
+*.log
+
+# --- OS ---------------------------------------------------------------------
+Thumbs.db
+desktop.ini
+.DS_Store

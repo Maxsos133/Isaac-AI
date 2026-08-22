@@ -1,0 +1,154 @@
+# Copy this file to config.toml and point the three [game] paths at your
+# own install. config.toml is gitignored because those paths are specific
+# to one machine.
+#
+# savedata_dir is where Isaac actually writes. With SteamCloud=1 that is the
+# Steam userdata folder, NOT My Games — check which one has a recent
+# log.txt before assuming.
+
+# Isaac AI configuration.
+#
+# Everything the harness needs to know about this machine lives here. Paths are
+# Windows paths; use forward slashes or doubled backslashes.
+
+[game]
+executable = "C:/Program Files (x86)/Steam/steamapps/common/The Binding of Isaac Rebirth/isaac-ng.exe"
+mods_dir = "C:/Program Files (x86)/Steam/steamapps/common/The Binding of Isaac Rebirth/mods"
+savedata_dir = "C:/Users/YOUR-USERNAME/Documents/My Games/Binding of Isaac Repentance+"
+app_id = 250900
+
+[instances]
+# Isaac's logic tick is fixed at 30 Hz, so throughput scales only with instance
+# count. Phase 0 measured 12 instances at a full 30 steps/s each with headroom
+# left over on a 7950X / 32 GB machine.
+# Twenty measured against twelve: 469.6 game ticks/s against 304.6, so +54%
+# aggregate throughput for 67% more instances. Per instance drops only 25.4 to
+# 23.5 ticks/s against Isaac's 30 cap, so the machine still has headroom.
+count = 20
+base_port = 9700
+# Where to tile the game windows on the desktop. These size the *outer* window,
+# which carries 16px of invisible resize border and 39px of title bar and frame
+# on top of the client area the game actually draws into. 496x309 therefore
+# yields a 480x270 client — exactly half the 960x540 options.ini asks Isaac for,
+# so it is 16:9 with no letterboxing, and divides evenly down to the 160x90 /
+# 96x54 candidates for a pixel policy. Phase 3 captures this client area, so
+# changing these changes the student's input distribution: don't, casually.
+window_width = 496
+window_height = 309
+# Five, so twenty instances tile in four rows. At four columns twenty would need
+# five rows — 1555px tall against a 1440px desktop, with the bottom row off
+# screen and uncapturable.
+grid_columns = 5
+origin_x = 10
+origin_y = 10
+
+[save]
+# The pristine save state every training session is seeded from. Prepared by
+# hand once: File 1, Isaac, Hard mode, zero unlocks, one run left in progress.
+snapshot = "saves/tier0-zero-unlocks-hard"
+
+[env]
+# Agent decisions per game tick. 1 = act on every tick (30 Hz).
+action_repeat = 2
+max_episode_steps = 4500
+# Fail an instance if the agent cannot get it into a run within this long.
+startup_timeout_seconds = 120.0
+
+[rewards]
+# Deliberately thin. Dense hand-shaping is what overfit the previous project to
+# its lesson rooms; credit assignment is the learner's job.
+damage_dealt = 0.10
+# Back to -1.00 after -2.50 was tried and measured worse. The intent was to stop
+# the agent trading hits for kills, and in isolation the arithmetic supported it.
+# Combined with the closer spawns below it was a mistake: at 102 units damage is
+# not avoidable, so four hits cost 10.00 against 7.50 of kills and 3.00 for
+# clearing — the whole encounter goes net-negative and the dominant gradient
+# becomes "do not engage". combat-v11 duly returned -1.2 a run against
+# combat-v6's +10, settled at difficulty 0.39 against 0.75, and ended with three
+# dead action axes instead of one.
+# Two variables moved at once and the result was worse and confounded. This
+# restores the value that produced the strongest teacher so far, leaving the
+# spawn distance as the single change to evaluate against it.
+damage_taken = -1.00
+kill = 0.50
+# Raised from 2.00. Against damage_taken = -1.00, avoiding a single hit was
+# worth about two kills, so committing to a kill that costs a hit was a losing
+# trade at every individual moment even though winning the encounter paid more
+# overall. Watching the agent, that is exactly what it had learned: back to a
+# wall, fire across the room, never close.
+room_clear = 3.00
+new_level = 10.00
+death = -10.00
+# Floors only. floor-v6 was the first run where dying was actually charged —
+# v4's penalty never fired and v5 counted deaths without paying them — and it is
+# the run that collapsed: success 0.10 against v5's 0.375 at the same 1M steps,
+# 838 deaths, difficulty pinned at 0.000 the whole way, and all four action axes
+# left sitting on the uniform ceiling.
+#
+# At -10.00 a death costs more than a whole good episode earns (a new room, a
+# clear and one room of shaping is about +8), and because PPO normalises
+# advantages per minibatch, one such spike inflates the batch deviation and
+# squashes the small shaping differences that carry the actual gradient. That is
+# the same shape as `damage_taken -2.50`, which was tried and reverted for making
+# the dominant gradient "do not engage".
+#
+# -2.00 still makes dying clearly the worst outcome without letting it outweigh
+# everything the agent is being asked to do. This is the single variable that
+# separates floor-v7 from v6; nothing else moves.
+floor_death = -2.00
+# Shared by floors and navigation, where it must stay far below one step of
+# door_shaping (0.031) or the policy gradient drowns in the entropy bonus and
+# drifts to uniform — that cost the whole nav-v1 run to diagnose.
+step = -0.002
+# Combat only. Encounters are short and bounded, with no shaping term to
+# overpower, so idling can be priced properly here without touching the tasks
+# above. At -0.005 a 250-step encounter costs 1.25 against a room_clear of
+# 3.00: enough that stalling at a wall pays rent, not so much that conceding
+# beats fighting.
+combat_step = -0.005
+# Floors only: entering a room for the first time. Raised from 0.30 after
+# floor-v1 spent half its episodes wandering until the clock ran out — the old
+# value was far too small next to the -10 for dying, so not exploring was the
+# better bet.
+new_room = 1.00
+# Potential-based shaping toward the nearest unexplored door. This is the term
+# that gives the agent a direction to walk in; without it, reward only arrives
+# on room entry, which is thousands of ticks of random walking away.
+# Raised from 0.50. At the old value one step toward a door was worth about
+# 0.004 — the same order as the per-step penalty, and small enough that the
+# whole policy gradient came out ten times smaller than PPO's entropy bonus, so
+# the optimiser spent nav-v1 maximising randomness instead of learning.
+door_shaping = 4.00
+# Navigation task only: reaching the next room. Large and immediate, because
+# the whole point of isolating navigation is a short, unambiguous credit chain.
+navigation_arrival = 10.00
+
+[combat]
+# Raised from 6: the combat curriculum saturated at its old ceiling in v3, so
+# the dial could no longer measure improvement.
+max_enemies = 10
+
+[pixels]
+# What the pixel student sees. These must divide the 480x270 client area
+# exactly, or the downsample stops being a box filter and starts inventing
+# scale-dependent artefacts; loading the config checks it.
+# 160x90 is the largest candidate measured legible: player, both doors, hearts
+# and minimap stay distinct. 96x54 keeps the player and the room but smears the
+# HUD, and 80x45 loses the player entirely.
+# Raised from 160x90 after the head-to-head showed a far stronger teacher
+# produced no stronger student — the constraint is what the student can see, not
+# what it is shown how to do. At 160x90 an enemy is about five pixels and there
+# can be eight of them on a floor that is mostly blood.
+# 240x135 is the next exact divisor (480/2, 270/2). It is also *cheaper* to
+# produce than 160x90: halving is a special-cased path in INTER_AREA at
+# 0.021ms a frame against 0.128ms for thirding. The costs are the actor growing
+# to 11.2M parameters and the rollout buffer to 299MB, both comfortable here.
+width = 240
+height = 135
+# Frames per observation. One frame has no velocity in it — a tear in flight
+# and a tear at rest are the same picture, and so are a charger winding up and
+# one standing still.
+stack = 4
+# Isaac uses colour to carry meaning (heart types, pickups, enemy variants),
+# so this costs information rather than just channels.
+grayscale = false
